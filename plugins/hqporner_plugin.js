@@ -44,7 +44,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "hqporner",
         "name": "HQPorner",
-        "version": "1.0.3",
+        "version": "1.0.4",
         "description": "Video HD 18+ từ hqporner.com",
         "author": "TheVinhLy",
         "baseUrl": "https://hqporner.com",
@@ -54,9 +54,9 @@ function getManifest() {
         "isAdult": true,
         "type": "MOVIE",
         "layoutType": "HORIZONTAL",
-        "playerType": "embedtoexoplay",
+        "playerType": "exoplayer",
         "adblock": true,
-        "debug": false
+        "debug": true
     });
 }
 
@@ -319,13 +319,13 @@ function parseDetailResponse(html, apiUrl, datasend) {
 
     return JSON.stringify({
         url: absUrl(m[1]),
-        // Player nạp link video bằng JS nên App phải mở trang này trong WebView ngầm
-        // (playerType "embedtoexoplay") và dò request .mp4. isEmbed=false để App
-        // KHÔNG tự fetch HTTP (sẽ bị mydaddy.cc chặn).
-        isEmbed: false,
+        // App fetch trang player kèm Referer hqporner (mydaddy.cc chặn khi thiếu Referer),
+        // rồi gọi parseEmbedResponse() để lấy link mp4 thật (giống cách MissAV lấy m3u8).
+        isEmbed: true,
         headers: {
             "Referer": referer,
-            "Stream-Regex": "https?:\\/\\/[^\"']+\\.(?:mp4|m3u8)[^\"']*"
+            "Origin": BASE,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
         subtitles: []
     });
@@ -336,7 +336,12 @@ function parseDetailResponse(html, apiUrl, datasend) {
  * hoặc trang player (chứa mp4).
  */
 function parseEmbedResponse(html, sourceUrl) {
-    html = String(html || "");
+    html = String(html || "").replace(/\\u002F/gi, "/").replace(/\\x2F/gi, "/");
+    // Log để xem HTML player thật trong Console Toast (bật debug trong manifest)
+    console.log("EMBED url=" + sourceUrl + " len=" + html.length);
+    console.log("EMBED head=" + html.substring(0, 1500));
+    var kpos = html.search(/mp4|m3u8|eval\(|atob\(|bigcdn/i);
+    if (kpos !== -1) console.log("EMBED ctx=" + html.substring(Math.max(0, kpos - 300), kpos + 500));
     var src = String(sourceUrl || "").split("|")[0];
     var om = src.match(/^(https?:\/\/[^\/]+)/i);
     var origin = om ? om[1] : BASE;
