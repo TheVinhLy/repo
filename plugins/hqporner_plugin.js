@@ -44,7 +44,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "hqporner",
         "name": "HQPorner",
-        "version": "1.0.4",
+        "version": "1.0.6",
         "description": "Video HD 18+ từ hqporner.com",
         "author": "TheVinhLy",
         "baseUrl": "https://hqporner.com",
@@ -297,20 +297,16 @@ function parseDetailResponse(html, apiUrl, datasend) {
     html = String(html || "");
     var referer = BASE + "/";
 
-    var direct = extractStreams(html);
-    if (direct.length > 0) {
-        return JSON.stringify({
-            url: direct[0].url,
-            isEmbed: false,
-            headers: { "Referer": referer },
-            subtitles: [],
-            mimeType: direct[0].url.indexOf(".m3u8") !== -1 ? "application/x-mpegURL" : "video/mp4"
-        });
-    }
+    // KHÔNG lấy mp4/m3u8 nằm trên trang hqporner: đó là video quảng cáo/preview.
+    // Video thật chỉ lấy ở bước embed (trang player).
+    var found = extractStreams(html);
+    console.log("DETAIL mp4 trên trang hqporner (bỏ qua): " + found.length + (found.length ? " vd " + found[0].url : ""));
 
-    var m = html.match(/<iframe[^>]+src=["']([^"']+)["']/i)
+    var m = html.match(/["']((?:https?:)?\/\/(?:www\.)?mydaddy\.cc\/[^"'\s]+)["']/i)
+        || html.match(/<iframe[^>]+src=["']([^"']*(?:\/video\/|embed|player)[^"']*)["']/i)
         || html.match(/["'](\/blocks\/altplayer\.php\?[^"']+)["']/i)
-        || html.match(/["']((?:https?:)?\/\/[^"']*\/(?:video|embed)\/[^"']+)["']/i);
+        || html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    console.log("DETAIL iframe = " + (m ? m[1] : "KHÔNG THẤY"));
 
     if (!m) {
         console.log("parseDetailResponse: không thấy iframe/nguồn video");
@@ -323,9 +319,13 @@ function parseDetailResponse(html, apiUrl, datasend) {
         // rồi gọi parseEmbedResponse() để lấy link mp4 thật (giống cách MissAV lấy m3u8).
         isEmbed: true,
         headers: {
+            // Giống hệt request iframe mà trình duyệt gửi tới mydaddy.cc (lấy từ DevTools)
             "Referer": referer,
-            "Origin": BASE,
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Sec-Fetch-Dest": "iframe",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "cross-site"
         },
         subtitles: []
     });
