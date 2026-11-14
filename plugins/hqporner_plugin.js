@@ -44,7 +44,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "hqporner",
         "name": "HQPorner",
-        "version": "1.0.6",
+        "version": "1.0.7",
         "description": "Video HD 18+ từ hqporner.com",
         "author": "TheVinhLy",
         "baseUrl": "https://hqporner.com",
@@ -56,7 +56,7 @@ function getManifest() {
         "layoutType": "HORIZONTAL",
         "playerType": "exoplayer",
         "adblock": true,
-        "debug": true
+        "debug": false
     });
 }
 
