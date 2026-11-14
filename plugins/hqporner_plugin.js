@@ -44,7 +44,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "hqporner",
         "name": "HQPorner",
-        "version": "1.0.1",
+        "version": "1.0.3",
         "description": "Video HD 18+ từ hqporner.com",
         "author": "TheVinhLy",
         "baseUrl": "https://hqporner.com",
@@ -54,7 +54,7 @@ function getManifest() {
         "isAdult": true,
         "type": "MOVIE",
         "layoutType": "HORIZONTAL",
-        "playerType": "exoplayer",
+        "playerType": "embedtoexoplay",
         "adblock": true,
         "debug": false
     });
@@ -319,8 +319,14 @@ function parseDetailResponse(html, apiUrl, datasend) {
 
     return JSON.stringify({
         url: absUrl(m[1]),
-        isEmbed: true,
-        headers: { "Referer": referer },
+        // Player nạp link video bằng JS nên App phải mở trang này trong WebView ngầm
+        // (playerType "embedtoexoplay") và dò request .mp4. isEmbed=false để App
+        // KHÔNG tự fetch HTTP (sẽ bị mydaddy.cc chặn).
+        isEmbed: false,
+        headers: {
+            "Referer": referer,
+            "Stream-Regex": "https?:\\/\\/[^\"']+\\.(?:mp4|m3u8)[^\"']*"
+        },
         subtitles: []
     });
 }
@@ -368,7 +374,8 @@ function extractStreams(html) {
         u = absUrl(u);
         if (!u || seen[u]) return;
         seen[u] = true;
-        var qm = String(label || u).match(/(\d{3,4})/);
+        // Chất lượng lấy từ tên file (vd .../1080.mp4), không lấy số trong token
+        var qm = u.match(/\/(\d{3,4})p?\.(?:mp4|m3u8)/i) || String(label || "").match(/^(\d{3,4})p?$/);
         out.push({ url: u, q: qm ? parseInt(qm[1], 10) : 0 });
     }
 
@@ -379,8 +386,10 @@ function extractStreams(html) {
         push(m[1], title ? title[1] : m[1]);
     }
 
-    var r2 = /["']?(?:file|src|url)["']?\s*[:=]\s*["']((?:https?:)?\\?\/\\?\/[^"']+?\.(?:mp4|m3u8)[^"']*)["']/gi;
-    while ((m = r2.exec(html)) !== null) push(m[1], m[1]);
+    // Bắt mọi URL .mp4/.m3u8 trong trang (kể cả dạng \/ hoặc // không có https:)
+    var plain = html.replace(/\\\//g, "/");
+    var r2 = /(?:https?:)?\/\/[^"'\s<>\\]+?\.(?:mp4|m3u8)(?:\?[^"'\s<>\\]*)?/gi;
+    while ((m = r2.exec(plain)) !== null) push(m[0], m[0]);
 
     out.sort(function (a, b) { return b.q - a.q; });
     return out;
